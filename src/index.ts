@@ -1,5 +1,6 @@
 import express from 'express';
 import { hsUsersRouter } from './routes/hsUsers';
+import { hsClientsRouter } from './routes/hsClients';
 
 const PORT = Number(process.env.PORT) || 3030;
 
@@ -20,6 +21,7 @@ app.use((req, res, next) => {
 });
 
 app.use('/api/v1/hs-users', hsUsersRouter);
+app.use('/api/v1/hs-clients', hsClientsRouter);
 
 const server = app.listen(PORT, () => {
   console.log(`Proxy server listening on port ${PORT}`);
