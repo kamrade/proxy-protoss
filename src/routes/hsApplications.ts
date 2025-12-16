@@ -19,14 +19,37 @@ const createProxyHandler =
     }
 
     const upstreamUrl = new URL(resolveEndpoint(req));
+    const existingQueryValues = new Map<string, Set<string>>();
+    upstreamUrl.searchParams.forEach((value, key) => {
+      if (!existingQueryValues.has(key)) {
+        existingQueryValues.set(key, new Set());
+      }
+      existingQueryValues.get(key)!.add(value);
+    });
+
+    const appendQueryParam = (key: string, value: string): void => {
+      const values = existingQueryValues.get(key);
+      if (values?.has(value)) {
+        return;
+      }
+
+      if (!values) {
+        existingQueryValues.set(key, new Set([value]));
+      } else {
+        values.add(value);
+      }
+
+      upstreamUrl.searchParams.append(key, value);
+    };
+
     Object.entries(req.query).forEach(([key, value]) => {
       if (Array.isArray(value)) {
-        value.forEach((entry) => upstreamUrl.searchParams.append(key, String(entry)));
+        value.forEach((entry) => appendQueryParam(key, String(entry)));
         return;
       }
 
       if (value !== undefined) {
-        upstreamUrl.searchParams.append(key, String(value));
+        appendQueryParam(key, String(value));
       }
     });
 
@@ -53,7 +76,28 @@ const createProxyHandler =
     }
   };
 
-hsApplicationsRouter.get('/', createProxyHandler(() => APPLICATIONS_ENDPOINT));
+hsApplicationsRouter.get(
+  '/',
+  createProxyHandler((req) => {
+    const upstreamUrl = new URL(APPLICATIONS_ENDPOINT);
+    const appendHaystackClientId = (value: unknown): void => {
+      if (value === undefined) {
+        return;
+      }
+
+      if (Array.isArray(value)) {
+        value.forEach(appendHaystackClientId);
+        return;
+      }
+
+      upstreamUrl.searchParams.append('haystackClientId', String(value));
+    };
+
+    appendHaystackClientId(req.query.haystackClientId);
+
+    return upstreamUrl.toString();
+  })
+);
 hsApplicationsRouter.get(
   '/:applicationId',
   createProxyHandler((req) => `${APPLICATIONS_ENDPOINT}/${req.params.applicationId}`)
