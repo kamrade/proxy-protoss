@@ -5,7 +5,7 @@ const APPLICATIONS_ENDPOINT = 'https://dev.fraudknight.com/api/gateway/applicati
 export const hsApplicationsRouter = Router();
 
 const createProxyHandler =
-  (resolveEndpoint: (req: Request) => string) =>
+  (resolveEndpoint: (req: Request) => string, method: 'GET' | 'PUT' = 'GET') =>
   async (req: Request, res: Response): Promise<Response | void> => {
     const authorization = req.header('authorization');
     const tenantId = req.header('x-tenant-id');
@@ -53,13 +53,37 @@ const createProxyHandler =
       }
     });
 
+    const headers: Record<string, string> = {
+      Authorization: authorization,
+      'x-tenant-id': tenantId,
+    };
+
+    let body: BodyInit | undefined;
+
+    if (method !== 'GET') {
+      const contentType = req.header('content-type');
+
+      if (contentType) {
+        headers['content-type'] = contentType;
+      }
+
+      if (req.body !== undefined) {
+        if (typeof req.body === 'string' || req.body instanceof Buffer) {
+          body = req.body;
+        } else {
+          body = JSON.stringify(req.body);
+          if (!headers['content-type']) {
+            headers['content-type'] = 'application/json';
+          }
+        }
+      }
+    }
+
     try {
       const upstreamResponse = await fetch(upstreamUrl, {
-        method: 'GET',
-        headers: {
-          Authorization: authorization,
-          'x-tenant-id': tenantId,
-        },
+        method,
+        headers,
+        body,
       });
 
       const responseBody = await upstreamResponse.text();
@@ -105,4 +129,12 @@ hsApplicationsRouter.get(
 hsApplicationsRouter.get(
   '/:applicationId/notes',
   createProxyHandler((req) => `${APPLICATIONS_ENDPOINT}/${req.params.applicationId}/notes`)
+);
+hsApplicationsRouter.put(
+  '/:applicationId/notes/:noteId',
+  createProxyHandler(
+    (req) =>
+      `${APPLICATIONS_ENDPOINT}/${req.params.applicationId}/notes/${req.params.noteId}`,
+    'PUT'
+  )
 );
