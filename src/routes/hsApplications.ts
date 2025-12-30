@@ -130,6 +130,10 @@ hsApplicationsRouter.get(
   '/:applicationId/notes',
   createProxyHandler((req) => `${APPLICATIONS_ENDPOINT}/${req.params.applicationId}/notes`)
 );
+hsApplicationsRouter.get(
+  '/:applicationId/forms',
+  createProxyHandler((req) => `${APPLICATIONS_ENDPOINT}/${req.params.applicationId}/forms`)
+);
 hsApplicationsRouter.put(
   '/:applicationId/notes/:noteId',
   createProxyHandler(
