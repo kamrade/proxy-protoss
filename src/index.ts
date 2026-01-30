@@ -2,6 +2,7 @@ import express from 'express';
 import { hsUsersRouter } from './routes/hsUsers';
 import { hsClientsRouter } from './routes/hsClients';
 import { hsApplicationsRouter } from './routes/hsApplications';
+import { prodHsApplicationsRouter } from './routes/prodHsApplications';
 import { casesRouter } from './routes/cases';
 
 const PORT = Number(process.env.PORT) || 3030;
@@ -28,6 +29,7 @@ app.use((req, res, next) => {
 app.use('/api/v1/hs-users', hsUsersRouter);
 app.use('/api/v1/hs-clients', hsClientsRouter);
 app.use('/api/v1/hs-applications', hsApplicationsRouter);
+app.use('/api/v1/prod-hs-applications', prodHsApplicationsRouter);
 app.use('/api/v1/cases', casesRouter);
 
 const server = app.listen(PORT, () => {
