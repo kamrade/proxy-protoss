@@ -3,6 +3,17 @@ import { Router, Request, Response } from 'express';
 const APPLICATIONS_ENDPOINT = 'https://fraudknight.com/api/gateway/applications';
 const DEFAULT_SORT = 'createdDate,asc';
 const DEFAULT_EXCLUDE_LIVE_PROFILE = 'true';
+const ALLOWED_SORTS = [
+  'modifiedDate,desc',
+  'modifiedDate,asc',
+  'createdDate,asc',
+  'createdDate,desc',
+] as const;
+type ApplicationSort = (typeof ALLOWED_SORTS)[number];
+const isApplicationSort = (value: string): value is ApplicationSort =>
+  (ALLOWED_SORTS as readonly string[]).includes(value);
+const normalizeSortValue = (value: string): string =>
+  value.trim().replace(/%2C/gi, ',');
 
 export type ApplicationStatus =
   // common
@@ -166,6 +177,30 @@ const createProxyHandler =
 
     appendMainStatus(mainStatusQuery);
 
+    const sortQuery = req.query.sort;
+    let appliedSort = false;
+    const appendSort = (value: unknown): void => {
+      if (value === undefined) {
+        return;
+      }
+
+      if (Array.isArray(value)) {
+        value.forEach(appendSort);
+        return;
+      }
+
+      const sortValue = normalizeSortValue(String(value));
+      if (isApplicationSort(sortValue)) {
+        upstreamUrl.searchParams.set('sort', sortValue);
+        appliedSort = true;
+      }
+    };
+
+    appendSort(sortQuery);
+    if (!appliedSort) {
+      upstreamUrl.searchParams.set('sort', DEFAULT_SORT);
+    }
+
     try {
       const upstreamResponse = await fetch(upstreamUrl, {
         method: 'GET',
@@ -193,7 +228,6 @@ prodHsApplicationsRouter.get(
   '/',
   createProxyHandler(() => {
     const upstreamUrl = new URL(APPLICATIONS_ENDPOINT);
-    upstreamUrl.searchParams.set('sort', DEFAULT_SORT);
     upstreamUrl.searchParams.set('excludeLiveProfile', DEFAULT_EXCLUDE_LIVE_PROFILE);
 
     return upstreamUrl.toString();
